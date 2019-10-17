@@ -1,0 +1,187 @@
+import comp_par as par
+import numpy as np
+from scipy.integrate import odeint
+from scipy import arange
+import PyDDE.pydde as p
+
+
+#fixed rates 
+
+allpar = np.genfromtxt('mcmc/post/res_mcmc_post1.txt')
+allNRT = allpar.T[0]
+allkint165 = allpar.T[1]
+allkint121 = allpar.T[2]
+allf165= allpar.T[3]
+allf121 = allpar.T[4]
+
+
+
+median_NRT = np.median(allNRT)
+median_kint165 = np.median(allkint165)
+median_kint121 = np.median(allkint121)
+median_f165 = np.median(allf165)
+median_f121 = np.median(allf121)
+
+
+NRT, kint165, kint121, f165, f121 = [median_NRT, median_kint165, median_kint121, median_f165, median_f121]
+
+#compute all parameters used in ode model, having f, kdegR, nRT, percentage of the cell
+def compute_parameters(nRT,kintC,f,iso):
+	#rs ['ap', 'am', 'bp', 'bm', 'gp', 'r2']
+	nR = nRT*0.6
+	nRe = nRT*0.2
+	rs = list(par.par_comp(nR,iso)[0:4])
+	ap = rs[0]
+	am = rs[1]
+	bp = rs[2]
+	bm = rs[3]
+	bmf = bm*f
+	amf = am*f
+	krec = 10**(-3)
+	kdegR = 10**(-4)
+	ksyn = nRe*kdegR
+	kint = (krec+kdegR)/3.
+	rates = [ap, am, bp, bm, kint, krec, kdegR, kintC, bmf, amf, 0, ksyn,0, nR, nRe]
+	return(rates)
+
+# fixed rates for 165
+ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165 = compute_parameters(NRT,kint165, f165,165)[0:13]
+# fixed rates for 121
+ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121 = compute_parameters(NRT,kint121, f121,121)[0:13]
+
+#initial conditions
+nrs = NRT*0.6
+nre = NRT*0.2
+
+Rs0 = nrs
+Ms = 0
+Ps0 = 0
+Re0 = nre
+Me0 = 0
+Pe0 = 0
+S0 = 0
+
+conc = np.array([0.025,0.25,1.25]) #nM
+lig = list(conc*(10**5)*6.022) #molecules
+
+def odegradErk(s, c, t):
+	ap = c[0]; am=c[1]; bp= c[2]; bm=c[3]; kint=c[4]; krec=c[5]; kdegR=c[6]; kintC=c[7]; bmf=c[8];
+	amf = c[9]; kdegC= c[10]; ksyn=c[11]; krecC= c[12]; mus=c[13]; lambdas=c[14]; kappas=c[15]; tau = c[16]
+
+	L = s[0]
+	R = s[1]
+	M = s[2]
+	P = s[3]
+	Re = s[4]
+	Me = s[5]
+	Pe = s[6]
+	S = s[7]
+
+	dLdt = -2*ap*L*R+am*M
+	dRsdt = -2*ap*L*R+am*M-bp*M*R+2*bm*P-kint*R+krec*Re+ksyn
+	dMsdt = 2*ap*L*R-am*M-bp*M*R+2*bm*P-kint*M
+	dPsdt = bp*M*R-2*bm*P-kintC*P
+	dRedt = kint*R-krec*Re-kdegR*Re+2*bmf*Pe+amf*Me
+	dMedt = kint*M+2*bmf*Pe-amf*Me
+	dPedt = kintC*P-2*bmf*Pe
+	dSdt = 	-mus*(S)+lambdas*(P/(P+kappas))
+	return np.array([dLdt, dRsdt, dMsdt, dPsdt, dRedt, dMedt, dPedt, dSdt])	
+
+
+
+def ddegradErk(s, c, t):
+	ap = c[0]; am=c[1]; bp= c[2]; bm=c[3]; kint=c[4]; krec=c[5]; kdegR=c[6]; kintC=c[7]; bmf=c[8];
+	amf = c[9]; kdegC= c[10]; ksyn=c[11]; krecC= c[12]; mus=c[13]; lambdas=c[14]; kappas=c[15];
+	tau = c[16]
+
+	L = s[0]
+	R = s[1]
+	M = s[2]
+	P = s[3]
+	Re = s[4]
+	Me = s[5]
+	Pe = s[6]
+	S = s[7]
+
+	Plag = 0.0
+    	if (t>tau):
+        	Plag = p.pastvalue(3,t-tau,0)
+
+	dLdt = -2*ap*L*R+am*M
+	dRsdt = -2*ap*L*R+am*M-bp*M*R+2*bm*P-kint*R+krec*Re+ksyn
+	dMsdt = 2*ap*L*R-am*M-bp*M*R+2*bm*P-kint*M
+	dPsdt = bp*M*R-2*bm*P-kintC*P
+	dRedt = kint*R-krec*Re-kdegR*Re+2*bmf*Pe+amf*Me
+	dMedt = kint*M+2*bmf*Pe-amf*Me
+	dPedt = kintC*P-2*bmf*Pe
+	dSdt = 	-mus*(S)+lambdas*(Plag/(Plag+kappas))
+
+	return np.array([dLdt, dRsdt, dMsdt, dPsdt, dRedt, dMedt, dPedt, dSdt])		
+
+    
+def ddesthistErk(g, s, c, t):
+    return (s, g)	
+
+def find_sol(ap,am,bp,bm,kint,krec,kdegR,kintC,bmf,amf,kdegC,ksyn,krecC,mus, lambdas, kappas,taus,L0,Rs0,Ms,Ps0,Re0,Me0,Pe0,S0):
+	#  Duration of the simulation
+	endTimeErk = 3601 
+	# The coefficients (constants) in the equations 
+	odeconsErk = np.array([ap,am,bp,bm,kint,krec,kdegR,kintC,bmf,amf,kdegC,ksyn,krecC,mus, lambdas, kappas,taus])
+	#  Initial conditions
+	odeistErk = np.array([L0,Rs0,Ms,Ps0,Re0,Me0,Pe0,S0])
+	#  Create an ode/dde object
+	ode_egErk = p.dde()
+
+	ode_egErk.initproblem(no_vars=8, no_cons=17, nlag=0, nsw=0,t0=0.0, t1=endTimeErk,initstate=odeistErk, c=odeconsErk, otimes=arange(0.0,endTimeErk,1),grad=odegradErk)
+
+	odestscErk = np.array([L0,Rs0,0,0,Re0,0,0,0])
+
+	ode_egErk.initsolver(tol=1*10**(-8), hbsize=10**4,dt=0.1,statescale=odestscErk)
+
+	ode_egErk.solve()
+
+	dde_egErk = p.dde()
+
+	ddeistErk = odeistErk
+	ddeconsErk = odeconsErk
+	ddestscErk = odestscErk
+
+	dde_egErk.dde(y=ddeistErk, times=arange(0.0, endTimeErk, 1), func=ddegradErk, parms=ddeconsErk, tol=0.000005, dt=0.1, hbsize=10**4, nlag=1, ssc=ddestscErk)
+
+	return(dde_egErk)
+
+conc = np.array([0.025,0.25,1.25]) #nM
+lig = list(conc*(10**5)*6.022) #molecules
+time = [5*60,15*60,30*60,60*60] #sec
+#tode5 = np.linspace(0,300,300)
+#tode60 = np.linspace(0,3600,3600)
+
+rates = np.genfromtxt('surface/post_sur.txt')
+
+#arange(a,b,c)  from a to b every c
+tpoints = arange(0,3601,20)
+
+for i in xrange(0,len(rates)):
+	mus, lambdas, kappas, taus = rates[i][1:5]
+	sim0025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+	sim025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+	sim125iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+
+	sim0025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+	sim025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+	sim125iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+
+	control = sim125iso165.data[:,8][299]
+
+	a_0025iso165 = sim0025iso165.data[:,8]/control
+	a_025iso165 = sim025iso165.data[:,8]/control
+	a_125iso165 = sim125iso165.data[:,8]/control
+
+	a_0025iso121 = sim0025iso121.data[:,8]/control
+	a_025iso121 = sim025iso121.data[:,8]/control
+	a_125iso121 = sim125iso121.data[:,8]/control
+
+	for j in xrange(0,len(tpoints)):
+		print 	a_0025iso165[tpoints[j]], a_025iso165[tpoints[j]], a_125iso165[tpoints[j]], a_0025iso121[tpoints[j]],a_025iso121[tpoints[j]],a_125iso121[tpoints[j]]
+
+

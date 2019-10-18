@@ -4,10 +4,10 @@ from scipy import arange
 import PyDDE.pydde as p
 
 
-# fixed rates for 165
+# Get fixed rates for 165 from some file or use median from posterior
 ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165, NRT = np.genfromtxt('fixed_pams_165.txt')
 
-# fixed rates for 121
+# Get fixed rates for 121 from some file or use median from posterior
 ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121, NRT = np.genfromtxt('fixed_pams_121.txt')
 
 #initial conditions
@@ -114,35 +114,32 @@ def find_sol(ap,am,bp,bm,kint,krec,kdegR,kintC,bmf,amf,kdegC,ksyn,krecC,mus, lam
 conc = np.array([0.025,0.25,1.25]) #nM
 lig = list(conc*(10**5)*6.022) #molecules
 time = [5*60,15*60,30*60,60*60] #sec
-#tode5 = np.linspace(0,300,300)
-#tode60 = np.linspace(0,3600,3600)
 
-rates = np.genfromtxt('surface/post_sur.txt')
+mus, lambdas, kappas, taus = np.genfromtxt('rates_for_model2_surface.txt') # or sample
 
-#arange(a,b,c)  from a to b every c
 tpoints = arange(0,3601,20)
 
-for i in xrange(0,len(rates)):
-	mus, lambdas, kappas, taus = rates[i][1:5]
-	sim0025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
-	sim025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
-	sim125iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
 
-	sim0025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
-	sim025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
-	sim125iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+sim0025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+sim025iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+sim125iso165 = find_sol(ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
 
-	control = sim125iso165.data[:,8][299]
+sim0025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[0],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+sim025iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[1],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
+sim125iso121 = find_sol(ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121,mus, lambdas, kappas,taus,lig[2],Rs0,Ms,Ps0,Re0,Me0,Pe0,S0)
 
-	a_0025iso165 = sim0025iso165.data[:,8]/control
-	a_025iso165 = sim025iso165.data[:,8]/control
-	a_125iso165 = sim125iso165.data[:,8]/control
+control = sim125iso165.data[:,8][299]
 
-	a_0025iso121 = sim0025iso121.data[:,8]/control
-	a_025iso121 = sim025iso121.data[:,8]/control
-	a_125iso121 = sim125iso121.data[:,8]/control
+a_0025iso165 = sim0025iso165.data[:,8]/control
+a_025iso165 = sim025iso165.data[:,8]/control
+a_125iso165 = sim125iso165.data[:,8]/control
 
-	for j in xrange(0,len(tpoints)):
-		print 	a_0025iso165[tpoints[j]], a_025iso165[tpoints[j]], a_125iso165[tpoints[j]], a_0025iso121[tpoints[j]],a_025iso121[tpoints[j]],a_125iso121[tpoints[j]]
+a_0025iso121 = sim0025iso121.data[:,8]/control
+a_025iso121 = sim025iso121.data[:,8]/control
+a_125iso121 = sim125iso121.data[:,8]/control
+
+# print solution at observed time points
+for j in xrange(0,len(tpoints)):
+	print 	a_0025iso165[tpoints[j]], a_025iso165[tpoints[j]], a_125iso165[tpoints[j]], a_0025iso121[tpoints[j]],a_025iso121[tpoints[j]],a_125iso121[tpoints[j]]
 
 

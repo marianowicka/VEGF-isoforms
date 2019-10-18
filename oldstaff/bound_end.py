@@ -1,55 +1,15 @@
-import comp_par as par
 import numpy as np
 from scipy.integrate import odeint
 from scipy import arange
 import PyDDE.pydde as p
 
 
-#fixed rates 
-
-allpar = np.genfromtxt('mcmc/post/res_mcmc_post1.txt')
-allNRT = allpar.T[0]
-allkint165 = allpar.T[1]
-allkint121 = allpar.T[2]
-allf165= allpar.T[3]
-allf121 = allpar.T[4]
-
-
-
-median_NRT = np.median(allNRT)
-median_kint165 = np.median(allkint165)
-median_kint121 = np.median(allkint121)
-median_f165 = np.median(allf165)
-median_f121 = np.median(allf121)
-
-
-NRT, kint165, kint121, f165, f121 = [median_NRT, median_kint165, median_kint121, median_f165, median_f121]
-
-#compute all parameters used in ode model, having f, kdegR, nRT, percentage of the cell
-def compute_parameters(nRT,kintC,f,iso):
-	#rs ['ap', 'am', 'bp', 'bm', 'gp', 'r2']
-	nR = nRT*0.6
-	nRe = nRT*0.2
-	rs = list(par.par_comp(nR,iso)[0:4])
-	ap = rs[0]
-	am = rs[1]
-	bp = rs[2]
-	bm = rs[3]
-	bmf = bm*f
-	amf = am*f
-	krec = 10**(-3)
-	kdegR = 10**(-4)
-	ksyn = nRe*kdegR
-	kint = (krec+kdegR)/3.
-	rates = [ap, am, bp, bm, kint, krec, kdegR, kintC, bmf, amf, 0, ksyn,0, nR, nRe]
-	return(rates)
 
 # fixed rates for 165
-ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165 = compute_parameters(NRT,kint165, f165,165)[0:13]
-#print compute_parameters(NRT,kint165, f165,165)[0:13]
-# fixed rates for 121
-ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121 = compute_parameters(NRT,kint121, f121,121)[0:13]
+ap165,am165,bp165,bm165,kint165,krec165,kdegR165,kintC165,bmf165,amf165,kdegC165,ksyn165,krecC165, NRT = np.genfromtxt('fixed_pams_165.txt')
 
+# fixed rates for 121
+ap121,am121,bp121,bm121,kint121,krec121,kdegR121,kintC121,bmf121,amf121,kdegC121,ksyn121,krecC121, NRT = np.genfromtxt('fixed_pams_121.txt')
 #initial conditions
 nrs = NRT*0.6
 nre = NRT*0.2

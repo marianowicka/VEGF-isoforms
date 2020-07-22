@@ -108,7 +108,7 @@ def samp_prior():
 
 conc = np.array([0.025,0.25,1.25]) #nM
 lig = list(conc*(10**5)*6.022) #molecules
-t_vec = np.arange(0,61,0.1)
+t_vec = np.arange(0,3601,1)
 
 def dist(iteration,DF):
     print(iteration)
@@ -120,10 +120,10 @@ def dist(iteration,DF):
             par165 = [alpp165, alpm165, betp165, betm165, krec, kdeg, kintM165,kintP165, f165, nrt]
             par121 = [alpp121, alpm121, betp121, betm121, krec, kdeg, kintM121, kintP121, f121, nrt]
             parNorm = par165 
-            t5 = np.where(t_vec == 5)[0][0]
-            t15 = np.where(t_vec == 15)[0][0]
-            t30 = np.where(t_vec == 30)[0][0]
-            t60 = np.where(t_vec == 60)[0][0]  
+            t5 = np.where(t_vec == 5*60)[0][0]
+            t15 = np.where(t_vec == 15*60)[0][0]
+            t30 = np.where(t_vec == 30*60)[0][0]
+            t60 = np.where(t_vec == 60*60)[0][0]  
             for i in range(0,3):
                 cini = [lig[i], 0.6*nrt, 0., 0., 0.2*nrt, 0., 0.]
                 res165 = sim_data(cini, t_vec, par165, parNorm)

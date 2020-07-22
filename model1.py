@@ -72,7 +72,7 @@ def sim_data(xini, t, par, parNorm):
     xiniNorm = xini
     xiniNorm[0] = 1.25*10**5*6.022
     simDataNorm = odeint(ode_model1, xiniNorm, t, args=(parNorm,))
-    tind = np.where(t==5)[0][0]
+    tind = np.where(t==5*60)[0][0]
     res = (simData.T[3]+simData.T[6])/(simDataNorm.T[3][tind]+simDataNorm.T[6][tind])
     return res
 
